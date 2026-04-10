@@ -1,0 +1,312 @@
+local addonName, ns = ...
+local U = ns.U
+local addon = ns.addon
+
+local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+local DEFAULT_FONT = "Fonts\\FRIZQT__.TTF"
+
+function U.CreateFontCycler(name, title, parent, configKey)
+    local l = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal") 
+    l:SetText(title)
+    
+    local c = CreateFrame("Frame", name, parent, "BackdropTemplate") 
+    c:SetSize(180, 28) 
+    c:SetPoint("TOP", l, "BOTTOM", 0, -5)
+    c:SetBackdrop({ 
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground", 
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", 
+        tile = true, 
+        tileSize = 16, 
+        edgeSize = 12, 
+        insets = {left=3, right=3, top=3, bottom=3} 
+    })
+    c:SetBackdropColor(0,0,0,0.8)
+    
+    local t = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight") 
+    t:SetPoint("CENTER") 
+    t:SetWidth(140) 
+    t:SetWordWrap(false)
+    
+    local function Update()
+        local cfg = LootPlusConfig[configKey]
+        local fonts = {} 
+        
+        if LSM then 
+            for n in pairs(LSM:HashTable("font")) do 
+                table.insert(fonts, n) 
+            end 
+        else 
+            fonts = {"Friz Quadrata TT"} 
+        end 
+        table.sort(fonts) 
+        
+        t:SetText(cfg.font or "Friz Quadrata TT") 
+        local p = LSM and LSM:Fetch("font", cfg.font) or DEFAULT_FONT 
+        pcall(function() t:SetFont(p, 13, "") end) 
+        
+        if addon.UpdateAllVisuals then 
+            addon:UpdateAllVisuals() 
+        end
+    end
+    
+    local function Cycle(d) 
+        local cfg = LootPlusConfig[configKey]
+        local fonts = {} 
+        
+        if LSM then 
+            for n in pairs(LSM:HashTable("font")) do 
+                table.insert(fonts, n) 
+            end 
+        else 
+            fonts = {"Friz Quadrata TT"} 
+        end 
+        table.sort(fonts) 
+        
+        local idx = 1 
+        for i, v in ipairs(fonts) do 
+            if v == cfg.font then 
+                idx = i 
+                break 
+            end 
+        end 
+        
+        idx = idx + d 
+        if idx > #fonts then 
+            idx = 1 
+        elseif idx < 1 then 
+            idx = #fonts 
+        end 
+        
+        cfg.font = fonts[idx] 
+        Update() 
+    end
+    
+    local pb = CreateFrame("Button", nil, c)
+    pb:SetSize(20,20)
+    pb:SetPoint("LEFT", 5, 0)
+    pb:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+    pb:SetScript("OnClick", function() Cycle(-1) end)
+    
+    local nb = CreateFrame("Button", nil, c)
+    nb:SetSize(20,20)
+    nb:SetPoint("RIGHT", -5, 0)
+    nb:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    nb:SetScript("OnClick", function() Cycle(1) end)
+    
+    c.Refresh = Update
+    c.label = l 
+    return c
+end
+
+function U.CreateGenericCycler(name, title, parent, list, settingKey, configKey)
+    local l = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal") 
+    l:SetText(title)
+    
+    local c = CreateFrame("Frame", name, parent, "BackdropTemplate") 
+    c:SetSize(140, 26) 
+    c:SetPoint("TOP", l, "BOTTOM", 0, -5)
+    c:SetBackdrop({ 
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground", 
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", 
+        tile = true, 
+        tileSize = 16, 
+        edgeSize = 12, 
+        insets = {left=2, right=2, top=2, bottom=2} 
+    })
+    c:SetBackdropColor(0,0,0,0.8)
+    
+    local t = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") 
+    t:SetPoint("CENTER")
+    
+    local function UpdateText() 
+        local cfg = LootPlusConfig[configKey]
+        
+        for _, v in ipairs(list) do 
+            if v.val == cfg[settingKey] then 
+                t:SetText(v.lbl) 
+            end 
+        end 
+        
+        local p = LSM and LSM:Fetch("font", cfg.font) or DEFAULT_FONT
+        local f = (cfg[settingKey] == "NONE") and "" or cfg[settingKey]
+        pcall(function() t:SetFont(p, 13, f) end)
+        
+        if addon.UpdateAllVisuals then 
+            addon:UpdateAllVisuals() 
+        end 
+    end
+    
+    local function Cycle(d) 
+        local cfg = LootPlusConfig[configKey]
+        local idx = 1 
+        
+        for i, v in ipairs(list) do 
+            if v.val == cfg[settingKey] then 
+                idx = i 
+                break 
+            end 
+        end 
+        
+        idx = idx + d 
+        if idx > #list then 
+            idx = 1 
+        elseif idx < 1 then 
+            idx = #list 
+        end 
+        
+        cfg[settingKey] = list[idx].val 
+        UpdateText() 
+    end
+    
+    local pb = CreateFrame("Button", nil, c)
+    pb:SetSize(18,18)
+    pb:SetPoint("LEFT", 2, 0)
+    pb:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-PrevPage-Up")
+    pb:SetScript("OnClick", function() Cycle(-1) end)
+    
+    local nb = CreateFrame("Button", nil, c)
+    nb:SetSize(18,18)
+    nb:SetPoint("RIGHT", -2, 0)
+    nb:SetNormalTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+    nb:SetScript("OnClick", function() Cycle(1) end)
+    
+    c.Refresh = UpdateText
+    c.label = l 
+    return c
+end
+
+function U.CreateSlider(name, title, parent, minVal, maxVal, step, settingKey, configKey)
+    local l = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal") 
+    l:SetText(title)
+    
+    local s = CreateFrame("Slider", name, parent, "OptionsSliderTemplate") 
+    s:SetPoint("TOP", l, "BOTTOM", 0, -10) 
+    s:SetMinMaxValues(minVal, maxVal) 
+    s:SetValueStep(step) 
+    s:SetObeyStepOnDrag(true)
+    
+    s:SetScript("OnValueChanged", function(self, value) 
+        if not addon:IsReady() then return end 
+        local val = math.floor(value + 0.5) 
+        
+        if configKey == "root" then 
+            LootPlusConfig[settingKey] = val 
+        else 
+            LootPlusConfig[configKey][settingKey] = val 
+        end 
+        
+        _G[self:GetName().."Text"]:SetText(title .. ": " .. val .. ((settingKey == "fade") and "s" or "")) 
+        
+        if addon.UpdateAllVisuals then 
+            addon:UpdateAllVisuals() 
+        end 
+    end)
+    
+    s.label = l 
+    return s
+end
+
+function U.CreateEditBox(name, title, parent, settingKey)
+    local l = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal") 
+    l:SetText(title)
+    
+    local eb = CreateFrame("EditBox", name, parent, "InputBoxTemplate") 
+    eb:SetSize(180, 20) 
+    eb:SetAutoFocus(false)
+    
+    eb:SetScript("OnShow", function(self) 
+        self:SetText(LootPlusConfig[settingKey] or "") 
+    end)
+    
+    eb:SetScript("OnEnterPressed", function(self) 
+        LootPlusConfig[settingKey] = self:GetText()
+        self:ClearFocus()
+        if addon.isTesting and addon.PostTestMessages then 
+            addon:PostTestMessages() 
+        end 
+    end)
+    
+    eb:SetScript("OnEscapePressed", function(self) 
+        self:SetText(LootPlusConfig[settingKey] or "")
+        self:ClearFocus() 
+    end)
+    
+    eb.label = l 
+    return eb
+end
+
+function U.CreateColorRow(name, parent, colorKey, previewFunc)
+    local f = CreateFrame("Button", name, parent, "BackdropTemplate")
+    f:SetSize(400, 28)
+    f:SetBackdrop({ 
+        bgFile = "Interface\\ChatFrame\\ChatFrameBackground", 
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", 
+        tile = true, 
+        tileSize = 16, 
+        edgeSize = 14, 
+        insets = {left=3, right=3, top=3, bottom=3} 
+    })
+    f:SetBackdropColor(0,0,0,0.5)
+    
+    local tex = f:CreateTexture(nil, "ARTWORK")
+    tex:SetSize(16, 16) 
+    tex:SetPoint("LEFT", 10, 0)
+    
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall") 
+    title:SetPoint("LEFT", tex, "RIGHT", 10, 0) 
+    title:SetText(name:gsub("LP_CLR_", ""))
+    
+    local preview = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    preview:SetPoint("RIGHT", -12, 0)
+    
+    local function Update()
+        local c = LootPlusConfig.colors[colorKey]
+        tex:SetColorTexture(c.r, c.g, c.b)
+        preview:SetText(previewFunc())
+        preview:SetTextColor(c.r, c.g, c.b)
+    end
+    
+    local function OnColorChanged()
+        local r, g, b
+        if ColorPickerFrame.GetColorRGB then 
+            r, g, b = ColorPickerFrame:GetColorRGB() 
+        elseif ColorPickerFrame.Content and ColorPickerFrame.Content.ColorPicker then 
+            r, g, b = ColorPickerFrame.Content.ColorPicker:GetColorRGB() 
+        end
+        
+        if r and g and b then 
+            LootPlusConfig.colors[colorKey] = {r=r, g=g, b=b}
+            Update()
+            if addon.isTesting and addon.PostTestMessages then 
+                addon:PostTestMessages() 
+            end 
+        end
+    end
+    
+    f:SetScript("OnClick", function()
+        local c = LootPlusConfig.colors[colorKey]
+        if ColorPickerFrame.SetupColorPickerAndShow then 
+            ColorPickerFrame:SetupColorPickerAndShow({ 
+                r = c.r, g = c.g, b = c.b, 
+                swatchFunc = OnColorChanged, 
+                cancelFunc = function(prev) 
+                    LootPlusConfig.colors[colorKey] = {r=prev.r, g=prev.g, b=prev.b}
+                    Update() 
+                end, 
+            })
+        else 
+            ColorPickerFrame.func = OnColorChanged
+            ColorPickerFrame.cancelFunc = function(prev) 
+                LootPlusConfig.colors[colorKey] = {r=prev.r, g=prev.g, b=prev.b}
+                Update() 
+            end
+            ColorPickerFrame.previousValues = {r = c.r, g = c.g, b = c.b}
+            ColorPickerFrame:SetColorRGB(c.r, c.g, c.b)
+            ColorPickerFrame:Show() 
+        end
+    end)
+    
+    -- FIXED: Target the button frame 'f' instead of the nil 'c' variable
+    f.Refresh = Update 
+    return f
+end

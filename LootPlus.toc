@@ -1,0 +1,12 @@
+## Interface: 110005, 120000, 20504
+## Title: Loot+
+## Notes: Custom Loot and Combat Text.
+## Version: v3.0-beta
+## SavedVariables: LootPlusConfig
+## OptionalDeps: LibStub, LibSharedMedia-3.0
+
+LootPlus.lua
+LootPlus_Profile.lua
+LootPlus_Widgets.lua
+LootPlus_Core.lua
+LootPlus_UI.lua
